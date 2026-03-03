@@ -11,9 +11,25 @@ Usage:
 
 from __future__ import annotations
 
+import os
+
 from ._protocol import InteractionError, _send_prompt
 
-__all__ = ["confirm", "ask", "choose", "InteractionError"]
+__all__ = [
+    "ENV_MARKER",
+    "InteractionError",
+    "ask",
+    "choose",
+    "confirm",
+    "is_run_by_task_scheduler",
+]
+
+ENV_MARKER = "TASK_SCHEDULER"
+
+
+def is_run_by_task_scheduler() -> bool:
+    """Check if this script is running under the task-scheduler."""
+    return os.getenv(ENV_MARKER) == "1"
 
 
 def confirm(

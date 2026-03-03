@@ -1,12 +1,13 @@
 """Tests for task_scheduler_sdk — confirm, ask, choose with mocked stdin/stdout."""
 
 import json
+import os
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
 
-from task_scheduler_sdk import ask, choose, confirm
+from task_scheduler_sdk import ENV_MARKER, ask, choose, confirm, is_run_by_task_scheduler
 from task_scheduler_sdk._protocol import InteractionError
 
 
@@ -131,3 +132,24 @@ class TestErrorHandling:
         ):
             with pytest.raises(InteractionError, match="Timeout"):
                 confirm("Deploy?")
+
+
+class TestIsRunByTaskScheduler:
+    """Tests for is_run_by_task_scheduler()."""
+
+    def test_returns_true_when_env_set(self):
+        """With TASK_SCHEDULER=1, returns True."""
+        with patch.dict(os.environ, {ENV_MARKER: "1"}):
+            assert is_run_by_task_scheduler() is True
+
+    def test_returns_false_when_missing(self):
+        """Without env var, returns False."""
+        env = os.environ.copy()
+        env.pop(ENV_MARKER, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert is_run_by_task_scheduler() is False
+
+    def test_returns_false_when_wrong_value(self):
+        """With TASK_SCHEDULER=0, returns False."""
+        with patch.dict(os.environ, {ENV_MARKER: "0"}):
+            assert is_run_by_task_scheduler() is False

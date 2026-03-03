@@ -4,35 +4,36 @@ Lightweight Python SDK for adding interactive prompts to scripts run by the task
 
 ## Installation
 
-Copy the `sdk/src/task_scheduler_sdk` directory into your script's project, or install it as a package:
+Install as a package from the repository:
 
 ```bash
-pip install path/to/task-scheduler/sdk
+pip install path/to/task-scheduler-sdk
 ```
 
 Or with uv:
 
 ```bash
-uv add --path path/to/task-scheduler/sdk
+uv add --path path/to/task-scheduler-sdk
 ```
 
 ## Quick Start
 
 ```python
-from task_scheduler_sdk import confirm, ask, choose
+from task_scheduler_sdk import confirm, ask, choose, is_run_by_task_scheduler
 
-# Yes/No confirmation
-if confirm("Deploy to production?", default=True):
-
-    # Multiple choice
-    env = choose("Select environment:", ["staging", "production"], default=0)
-
-    # Free text input
-    version = ask("Enter version:", default="1.0.0")
-
-    print(f"Deploying version {version} to env index {env}")
+# Detect if running under the scheduler
+if is_run_by_task_scheduler():
+    # Use SDK prompts — the scheduler handles I/O
+    if confirm("Deploy to production?", default=True):
+        env = choose("Select environment:", ["staging", "production"], default=0)
+        version = ask("Enter version:", default="1.0.0")
+        print(f"Deploying version {version} to env index {env}")
+    else:
+        print("Deployment cancelled")
 else:
-    print("Deployment cancelled")
+    # Running standalone — use regular input() or skip prompts
+    version = input("Enter version: ")
+    print(f"Deploying version {version}")
 ```
 
 ## API Reference
@@ -88,6 +89,27 @@ idx = choose("Select environment:", ["dev", "staging", "production"], default=0)
 env = ["dev", "staging", "production"][idx]
 print(f"Selected: {env}")
 ```
+
+### `is_run_by_task_scheduler() -> bool`
+
+Check if the current script is running under the task-scheduler. The scheduler sets `TASK_SCHEDULER=1` in the environment of every child process it launches.
+
+**Returns:** `True` if the `TASK_SCHEDULER` environment variable is `"1"`, `False` otherwise.
+
+```python
+from task_scheduler_sdk import is_run_by_task_scheduler
+
+if is_run_by_task_scheduler():
+    # Safe to use SDK prompts (confirm, ask, choose)
+    answer = confirm("Continue?", default=True)
+else:
+    # Running standalone — fall back to regular input or defaults
+    answer = input("Continue? [y/n] ").lower() == "y"
+```
+
+### `ENV_MARKER`
+
+The name of the environment variable used for scheduler detection (`"TASK_SCHEDULER"`). Exposed for advanced use cases (e.g., custom detection logic).
 
 ## Error Handling
 
