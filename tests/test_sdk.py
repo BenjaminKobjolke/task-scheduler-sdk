@@ -193,3 +193,23 @@ class TestOutput:
 
         # stdin should not have been read
         assert mock_in.tell() == 0
+
+    def test_output_empty_string_produces_no_json(self):
+        """output("") under scheduler produces no stdout — no JSON sent."""
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch.dict(os.environ, {ENV_MARKER: "1"}),
+        ):
+            output("")
+
+        assert mock_out.getvalue() == ""
+
+    def test_output_empty_string_prints_nothing_outside_scheduler(self, capsys):
+        """output("") outside scheduler prints empty line (same as print(""))."""
+        env = os.environ.copy()
+        env.pop(ENV_MARKER, None)
+        with patch.dict(os.environ, env, clear=True):
+            output("")
+
+        captured = capsys.readouterr()
+        assert captured.out == "\n"

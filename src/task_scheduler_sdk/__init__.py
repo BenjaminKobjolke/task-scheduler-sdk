@@ -44,7 +44,8 @@ def output(text: str) -> None:
         text: The text to display.
     """
     if is_run_by_task_scheduler():
-        _send_output(text)
+        if text:
+            _send_output(text)
     else:
         print(text)
 
