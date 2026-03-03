@@ -1,0 +1,71 @@
+"""Task Scheduler SDK — interactive prompts for scheduled scripts.
+
+Usage:
+    from task_scheduler_sdk import confirm, ask, choose
+
+    if confirm("Deploy to production?", default=True):
+        env = choose("Select environment:", ["staging", "production"], default=0)
+        version = ask("Enter version:", default="1.0.0")
+        print(f"Deploying version {version} to environment {env}")
+"""
+
+from __future__ import annotations
+
+from ._protocol import InteractionError, _send_prompt
+
+__all__ = ["confirm", "ask", "choose", "InteractionError"]
+
+
+def confirm(
+    message: str, *, default: bool | None = None, id: str | None = None
+) -> bool:
+    """Ask user for yes/no confirmation.
+
+    Args:
+        message: Question text shown to user
+        default: Default value used on timeout
+        id: Optional custom prompt ID
+
+    Returns:
+        True if user confirmed, False otherwise
+    """
+    return _send_prompt("confirm", message, prompt_id=id, default=default)
+
+
+def ask(
+    message: str, *, default: str | None = None, id: str | None = None
+) -> str:
+    """Ask user for text input.
+
+    Args:
+        message: Question text shown to user
+        default: Default value used on timeout
+        id: Optional custom prompt ID
+
+    Returns:
+        The user's text response
+    """
+    return _send_prompt("input", message, prompt_id=id, default=default)
+
+
+def choose(
+    message: str,
+    options: list[str],
+    *,
+    default: int | None = None,
+    id: str | None = None,
+) -> int:
+    """Ask user to pick from a list of options.
+
+    Args:
+        message: Question text shown to user
+        options: List of string options to choose from
+        default: Default option index (0-based) used on timeout
+        id: Optional custom prompt ID
+
+    Returns:
+        0-based index of the selected option
+    """
+    return _send_prompt(
+        "choice", message, prompt_id=id, default=default, options=options
+    )

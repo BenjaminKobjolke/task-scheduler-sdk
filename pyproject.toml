@@ -1,0 +1,12 @@
+[project]
+name = "task-scheduler-sdk"
+version = "0.1.0"
+description = "Lightweight SDK for interactive prompts in task-scheduler scripts"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/task_scheduler_sdk"]
