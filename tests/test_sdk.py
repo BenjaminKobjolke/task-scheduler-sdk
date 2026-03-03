@@ -1,0 +1,133 @@
+"""Tests for task_scheduler_sdk — confirm, ask, choose with mocked stdin/stdout."""
+
+import json
+from io import StringIO
+from unittest.mock import patch
+
+import pytest
+
+from task_scheduler_sdk import ask, choose, confirm
+from task_scheduler_sdk._protocol import InteractionError
+
+
+class TestConfirm:
+    """Tests for confirm()."""
+
+    def test_confirm_true(self):
+        response = json.dumps({"id": "test-id", "value": True})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = confirm("Deploy?")
+
+        assert result is True
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["_interactive"] is True
+        assert sent["type"] == "confirm"
+        assert sent["message"] == "Deploy?"
+
+    def test_confirm_false(self):
+        response = json.dumps({"id": "test-id", "value": False})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = confirm("Deploy?")
+
+        assert result is False
+
+    def test_confirm_with_default(self):
+        response = json.dumps({"id": "test-id", "value": True, "timed_out": True})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = confirm("Deploy?", default=True)
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["default"] is True
+        assert result is True
+
+    def test_confirm_with_custom_id(self):
+        response = json.dumps({"id": "my-id", "value": True})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+        ):
+            result = confirm("Deploy?", id="my-id")
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["id"] == "my-id"
+
+
+class TestAsk:
+    """Tests for ask()."""
+
+    def test_ask_returns_string(self):
+        response = json.dumps({"id": "test-id", "value": "2.0.0"})
+        with (
+            patch("sys.stdout", new_callable=StringIO),
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = ask("Version:")
+
+        assert result == "2.0.0"
+
+    def test_ask_with_default(self):
+        response = json.dumps({"id": "test-id", "value": "1.0.0"})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = ask("Version:", default="1.0.0")
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["default"] == "1.0.0"
+
+
+class TestChoose:
+    """Tests for choose()."""
+
+    def test_choose_returns_index(self):
+        response = json.dumps({"id": "test-id", "value": 1})
+        with (
+            patch("sys.stdout", new_callable=StringIO),
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = choose("Select env:", ["staging", "production"])
+
+        assert result == 1
+
+    def test_choose_sends_options(self):
+        response = json.dumps({"id": "test-id", "value": 0})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            choose("Select:", ["a", "b", "c"])
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["options"] == ["a", "b", "c"]
+        assert sent["type"] == "choice"
+
+
+class TestErrorHandling:
+    """Tests for error responses."""
+
+    def test_error_response_raises(self):
+        response = json.dumps({"id": "test-id", "error": "Timeout: no response"})
+        with (
+            patch("sys.stdout", new_callable=StringIO),
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            with pytest.raises(InteractionError, match="Timeout"):
+                confirm("Deploy?")
