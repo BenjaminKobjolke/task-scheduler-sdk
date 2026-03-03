@@ -19,21 +19,17 @@ uv add --path path/to/task-scheduler-sdk
 ## Quick Start
 
 ```python
-from task_scheduler_sdk import confirm, ask, choose, is_run_by_task_scheduler
+from task_scheduler_sdk import confirm, ask, choose, output
 
-# Detect if running under the scheduler
-if is_run_by_task_scheduler():
-    # Use SDK prompts — the scheduler handles I/O
-    if confirm("Deploy to production?", default=True):
-        env = choose("Select environment:", ["staging", "production"], default=0)
-        version = ask("Enter version:", default="1.0.0")
-        print(f"Deploying version {version} to env index {env}")
-    else:
-        print("Deployment cancelled")
+# output() works everywhere — protocol under scheduler, print() standalone
+output("Starting deployment process...")
+
+if confirm("Deploy to production?", default=True):
+    env = choose("Select environment:", ["staging", "production"], default=0)
+    version = ask("Enter version:", default="1.0.0")
+    output(f"Deploying version {version} to env index {env}")
 else:
-    # Running standalone — use regular input() or skip prompts
-    version = input("Enter version: ")
-    print(f"Deploying version {version}")
+    output("Deployment cancelled")
 ```
 
 ## API Reference
@@ -88,6 +84,23 @@ Ask the user to pick from a list of options.
 idx = choose("Select environment:", ["dev", "staging", "production"], default=0)
 env = ["dev", "staging", "production"][idx]
 print(f"Selected: {env}")
+```
+
+### `output(text) -> None`
+
+Display text to the user. When running under the task scheduler, sends through the JSON protocol so the scheduler can display it properly. When running standalone, falls back to `print()`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | `str` | Text to display to the user |
+
+This is a **fire-and-forget** call — no response is expected. Use `output()` as a drop-in replacement for `print()` to ensure your script's display text works correctly both under the scheduler and standalone.
+
+```python
+from task_scheduler_sdk import output
+
+output("Processing item 5 of 10...")
+output("Done!")
 ```
 
 ### `is_run_by_task_scheduler() -> bool`
@@ -148,13 +161,19 @@ if confirm("Run cleanup?"):
 
 The SDK communicates with the task scheduler using a JSON protocol over stdout/stdin:
 
+**Interactive prompts** (`confirm`, `ask`, `choose`):
 1. Your script writes a JSON prompt to **stdout**
 2. The scheduler reads it, shows it to the user (CLI terminal or chat bot)
 3. The user responds
 4. The scheduler writes the response as JSON to your script's **stdin**
 5. The SDK parses the response and returns the value
 
-This means your script's regular `print()` output still works normally — only lines with the special `_interactive` marker are intercepted as prompts.
+**Display-only output** (`output`):
+1. Your script writes a JSON message to **stdout** with `type: "output"`
+2. The scheduler reads it and displays the text to the user
+3. No response is sent back — the script continues immediately
+
+Only lines with the special `_interactive` marker are intercepted by the scheduler. Regular `print()` output still works but bypasses the protocol — prefer `output()` for reliable display under the scheduler.
 
 ## Running Your Script
 
