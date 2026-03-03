@@ -13,15 +13,17 @@ from __future__ import annotations
 
 import os
 
-from ._protocol import InteractionError, _send_prompt
+from ._protocol import InteractionError, _send_output, _send_prompt
 
 __all__ = [
     "ENV_MARKER",
     "InteractionError",
+    "_send_output",
     "ask",
     "choose",
     "confirm",
     "is_run_by_task_scheduler",
+    "output",
 ]
 
 ENV_MARKER = "TASK_SCHEDULER"
@@ -30,6 +32,21 @@ ENV_MARKER = "TASK_SCHEDULER"
 def is_run_by_task_scheduler() -> bool:
     """Check if this script is running under the task-scheduler."""
     return os.getenv(ENV_MARKER) == "1"
+
+
+def output(text: str) -> None:
+    """Display text to the user.
+
+    When running under the task scheduler, sends through the protocol.
+    Otherwise, prints directly to stdout.
+
+    Args:
+        text: The text to display.
+    """
+    if is_run_by_task_scheduler():
+        _send_output(text)
+    else:
+        print(text)
 
 
 def confirm(

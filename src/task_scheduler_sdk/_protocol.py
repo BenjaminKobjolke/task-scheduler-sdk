@@ -68,3 +68,19 @@ def _send_prompt(
         raise InteractionError(response["error"], prompt_id)
 
     return response["value"]
+
+
+def _send_output(text: str) -> None:
+    """Send display-only text to the scheduler (fire-and-forget, no response expected).
+
+    Args:
+        text: The text to display to the user.
+    """
+    payload = {
+        "_interactive": True,
+        "type": "output",
+        "id": "",
+        "message": text,
+    }
+    sys.stdout.write(json.dumps(payload) + "\n")
+    sys.stdout.flush()

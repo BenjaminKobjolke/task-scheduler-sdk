@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from task_scheduler_sdk import ENV_MARKER, ask, choose, confirm, is_run_by_task_scheduler
+from task_scheduler_sdk import ENV_MARKER, ask, choose, confirm, is_run_by_task_scheduler, output
 from task_scheduler_sdk._protocol import InteractionError
 
 
@@ -153,3 +153,43 @@ class TestIsRunByTaskScheduler:
         """With TASK_SCHEDULER=0, returns False."""
         with patch.dict(os.environ, {ENV_MARKER: "0"}):
             assert is_run_by_task_scheduler() is False
+
+
+class TestOutput:
+    """Tests for output()."""
+
+    def test_output_sends_json_when_under_scheduler(self):
+        """output() sends correct JSON protocol message when running under scheduler."""
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch.dict(os.environ, {ENV_MARKER: "1"}),
+        ):
+            output("Processing item 5 of 10")
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["_interactive"] is True
+        assert sent["type"] == "output"
+        assert sent["id"] == ""
+        assert sent["message"] == "Processing item 5 of 10"
+
+    def test_output_falls_back_to_print_when_not_under_scheduler(self, capsys):
+        """output() prints directly when not running under scheduler."""
+        env = os.environ.copy()
+        env.pop(ENV_MARKER, None)
+        with patch.dict(os.environ, env, clear=True):
+            output("Hello world")
+
+        captured = capsys.readouterr()
+        assert captured.out == "Hello world\n"
+
+    def test_output_does_not_read_stdin(self):
+        """output() is fire-and-forget — never reads from stdin."""
+        with (
+            patch("sys.stdout", new_callable=StringIO),
+            patch("sys.stdin", new_callable=StringIO) as mock_in,
+            patch.dict(os.environ, {ENV_MARKER: "1"}),
+        ):
+            output("status update")
+
+        # stdin should not have been read
+        assert mock_in.tell() == 0
