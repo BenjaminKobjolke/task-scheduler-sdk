@@ -67,7 +67,7 @@ Ask the user for text input.
 name = ask("Enter release name:", default="v1.0.0")
 ```
 
-### `choose(message, options, *, default=None, id=None) -> int`
+### `choose(message, options, *, default=None, id=None, hidden_options=None) -> int`
 
 Ask the user to pick from a list of options.
 
@@ -77,6 +77,7 @@ Ask the user to pick from a list of options.
 | `options` | `list[str]` | List of options to choose from |
 | `default` | `int \| None` | Default option index (0-based) used on timeout |
 | `id` | `str \| None` | Custom prompt ID (auto-generated if omitted) |
+| `hidden_options` | `dict[str, str] \| None` | Shortcut keys mapped to labels; accepted as input but not displayed. Indices continue after visible options. |
 
 **Returns:** 0-based index of the selected option.
 
@@ -84,6 +85,20 @@ Ask the user to pick from a list of options.
 idx = choose("Select environment:", ["dev", "staging", "production"], default=0)
 env = ["dev", "staging", "production"][idx]
 print(f"Selected: {env}")
+```
+
+**Hidden options** let you define shortcut commands that the scheduler accepts but does not show in the list:
+
+```python
+result = choose(
+    "Pick action:",
+    ["Continue", "Retry"],
+    hidden_options={"a": "Abort", "x": "Exit"},
+)
+# Visible options: "Continue" (0), "Retry" (1)
+# Hidden shortcuts: "a" returns 2, "x" returns 3
+if result == 2:
+    print("Aborted!")
 ```
 
 ### `output(text) -> None`

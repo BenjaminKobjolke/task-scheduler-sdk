@@ -88,6 +88,7 @@ def choose(
     *,
     default: int | None = None,
     id: str | None = None,
+    hidden_options: dict[str, str] | None = None,
 ) -> int:
     """Ask user to pick from a list of options.
 
@@ -96,10 +97,14 @@ def choose(
         options: List of string options to choose from
         default: Default option index (0-based) used on timeout
         id: Optional custom prompt ID
+        hidden_options: Shortcut keys mapped to labels; accepted as input
+            but not displayed to the user. Indices continue after visible
+            options (e.g. with 2 visible options, first hidden option = index 2).
 
     Returns:
         0-based index of the selected option
     """
     return _send_prompt(
-        "choice", message, prompt_id=id, default=default, options=options
+        "choice", message, prompt_id=id, default=default, options=options,
+        hidden_options=hidden_options,
     )

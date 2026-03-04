@@ -28,6 +28,7 @@ def _send_prompt(
     prompt_id: str | None = None,
     default: Any = None,
     options: list[str] | None = None,
+    hidden_options: dict[str, str] | None = None,
 ) -> Any:
     """Send a prompt to the scheduler via stdout and read the response from stdin.
 
@@ -37,6 +38,7 @@ def _send_prompt(
         prompt_id: Optional custom ID (auto-generated if not provided)
         default: Default value used on timeout
         options: List of options (for choice prompts)
+        hidden_options: Shortcut keys mapped to labels, accepted but not displayed
 
     Returns:
         The value from the scheduler's response
@@ -57,6 +59,8 @@ def _send_prompt(
         payload["default"] = default
     if options is not None:
         payload["options"] = options
+    if hidden_options is not None:
+        payload["hidden_options"] = hidden_options
 
     sys.stdout.write(json.dumps(payload) + "\n")
     sys.stdout.flush()

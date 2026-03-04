@@ -120,6 +120,35 @@ class TestChoose:
         assert sent["type"] == "choice"
 
 
+    def test_choose_sends_hidden_options(self):
+        response = json.dumps({"id": "test-id", "value": 2})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            result = choose(
+                "Pick:", ["Continue", "Retry"],
+                hidden_options={"a": "Abort"},
+            )
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert sent["hidden_options"] == {"a": "Abort"}
+        assert result == 2
+
+    def test_choose_omits_hidden_options_when_none(self):
+        response = json.dumps({"id": "test-id", "value": 0})
+        with (
+            patch("sys.stdout", new_callable=StringIO) as mock_out,
+            patch("sys.stdin", StringIO(response + "\n")),
+            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+        ):
+            choose("Pick:", ["a", "b"])
+
+        sent = json.loads(mock_out.getvalue().strip())
+        assert "hidden_options" not in sent
+
+
 class TestErrorHandling:
     """Tests for error responses."""
 
