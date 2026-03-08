@@ -2,6 +2,15 @@
 
 Lightweight Python SDK for adding interactive prompts to scripts run by the task scheduler. Scripts can ask questions, request confirmations, and present choices to users — whether they're running via CLI or chat bot.
 
+## Dual-Mode Operation
+
+The SDK automatically detects how it's running:
+
+- **Interactive mode** (`INTERACTIVE=1` env var): Uses the JSON protocol over stdin/stdout to communicate with the task scheduler.
+- **CLI mode** (no env var): Falls back to console `input()` prompts so scripts work stand-alone without any wrapper code.
+
+This means `from interactions_sdk import confirm, ask, choose, output` gives you both modes for free — no wrapper code needed.
+
 ## Installation
 
 Install as a package from the repository:
@@ -41,10 +50,14 @@ Ask the user for yes/no confirmation.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `message` | `str` | Question text shown to user |
-| `default` | `bool \| None` | Default value used on timeout |
+| `default` | `bool \| None` | Default value used on timeout (interactive) or empty input (CLI) |
 | `id` | `str \| None` | Custom prompt ID (auto-generated if omitted) |
 
 **Returns:** `True` if confirmed, `False` otherwise.
+
+**CLI behavior:** Shows `[Y/n]` or `[y/N]` hint based on default. Empty input returns the default (or `False` when no default).
+
+**Interactive behavior:** Raises `AbortError` if the scheduler returns `None`.
 
 ```python
 if confirm("Continue with deployment?"):
@@ -58,10 +71,14 @@ Ask the user for text input.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `message` | `str` | Question text shown to user |
-| `default` | `str \| None` | Default value used on timeout |
+| `default` | `str \| None` | Default value used on timeout (interactive) or empty input (CLI) |
 | `id` | `str \| None` | Custom prompt ID (auto-generated if omitted) |
 
 **Returns:** The user's text response.
+
+**CLI behavior:** Shows `[default]` in prompt. Empty input returns the default (or `""` when no default).
+
+**Interactive behavior:** Raises `AbortError` if the scheduler returns `None`.
 
 ```python
 name = ask("Enter release name:", default="v1.0.0")
@@ -80,6 +97,10 @@ Ask the user to pick from a list of options.
 | `hidden_options` | `dict[str, str] \| None` | Shortcut keys mapped to labels; accepted as input but not displayed. Indices continue after visible options. |
 
 **Returns:** 0-based index of the selected option.
+
+**CLI behavior:** Shows a numbered menu. Default option is marked with `*`. Hidden options show a hint line like `(a=Abort)`. Invalid input re-prompts.
+
+**Interactive behavior:** Raises `AbortError` if the scheduler returns `None`.
 
 ```python
 idx = choose("Select environment:", ["dev", "staging", "production"], default=0)
@@ -103,7 +124,7 @@ if result == 2:
 
 ### `output(text) -> None`
 
-Display text to the user. When running under the task scheduler, sends through the JSON protocol so the scheduler can display it properly. When running standalone, falls back to `print()`.
+Display text to the user. When running under the task scheduler, sends through the JSON protocol so the scheduler can display it properly. When running standalone, falls back to `print()` with unicode safety.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -111,11 +132,61 @@ Display text to the user. When running under the task scheduler, sends through t
 
 This is a **fire-and-forget** call — no response is expected. Use `output()` as a drop-in replacement for `print()` to ensure your script's display text works correctly both under the scheduler and standalone.
 
+If output capture is active, the text is also appended to the capture buffer.
+
 ```python
 from interactions_sdk import output
 
 output("Processing item 5 of 10...")
 output("Done!")
+```
+
+### `ask_or_accept(label, *, default) -> str`
+
+Show an accept/edit choice. If the user picks "Accept", returns the default. If they pick "Edit", prompts for text input.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `label` | `str` | The label for the value |
+| `default` | `str` | The current/default value |
+
+**Returns:** The accepted or edited value.
+
+```python
+title = ask_or_accept("Title:", default="My Todo")
+```
+
+### `InteractionChoice`
+
+Higher-level class that maps display labels to action keys.
+
+```python
+from interactions_sdk import InteractionChoice
+
+ic = InteractionChoice(
+    "What next?",
+    [("Continue processing", "continue"), ("Skip this item", "skip")],
+    default=0,
+    abort=True,  # adds a hidden "a" shortcut that returns "abort"
+)
+action = ic.choose()
+if action == "abort":
+    print("Aborted!")
+elif action == "continue":
+    print("Continuing...")
+```
+
+### Output Capture
+
+Capture `output()` calls into a buffer for later retrieval.
+
+```python
+from interactions_sdk import start_output_capture, stop_output_capture, output
+
+start_output_capture(silent=True)  # silent=True suppresses display
+output("line 1")
+output("line 2")
+text = stop_output_capture()  # "line 1\nline 2"
 ```
 
 ### `is_interactive() -> bool`
@@ -128,11 +199,9 @@ Check if the current script is running under the task-scheduler. The scheduler s
 from interactions_sdk import is_interactive
 
 if is_interactive():
-    # Safe to use SDK prompts (confirm, ask, choose)
-    answer = confirm("Continue?", default=True)
+    print("Running under scheduler")
 else:
-    # Running standalone — fall back to regular input or defaults
-    answer = input("Continue? [y/n] ").lower() == "y"
+    print("Running standalone — CLI prompts will be used automatically")
 ```
 
 ### `ENV_MARKER`
@@ -141,7 +210,22 @@ The name of the environment variable used for scheduler detection (`"INTERACTIVE
 
 ## Error Handling
 
-If a prompt times out and has no default value, an `InteractionError` is raised:
+### `AbortError`
+
+Raised when a prompt function (`confirm`, `ask`, `choose`) receives `None` from the scheduler in interactive mode. This typically means the user did not respond.
+
+```python
+from interactions_sdk import confirm, AbortError
+
+try:
+    result = confirm("Proceed?")
+except AbortError:
+    print("User did not respond — aborting")
+```
+
+### `InteractionError`
+
+Raised when the scheduler returns an explicit error response (e.g., timeout with no default).
 
 ```python
 from interactions_sdk import confirm, InteractionError
@@ -150,7 +234,6 @@ try:
     result = confirm("Proceed?")
 except InteractionError as e:
     print(f"Prompt failed: {e}")
-    # Handle gracefully - e.g., abort operation
 ```
 
 ## Timeout Behavior
@@ -187,6 +270,10 @@ The SDK communicates with the task scheduler using a JSON protocol over stdout/s
 1. Your script writes a JSON message to **stdout** with `type: "output"`
 2. The scheduler reads it and displays the text to the user
 3. No response is sent back — the script continues immediately
+
+**CLI fallback** (no scheduler):
+1. `confirm`/`ask`/`choose` use `input()` to prompt in the console
+2. `output` uses `print()` with unicode safety
 
 Only lines with the special `_interactive` marker are intercepted by the scheduler. Regular `print()` output still works but bypasses the protocol — prefer `output()` for reliable display under the scheduler.
 
