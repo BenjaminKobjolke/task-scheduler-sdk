@@ -1,4 +1,4 @@
-# Task Scheduler SDK
+# Interactions SDK
 
 Lightweight Python SDK for adding interactive prompts to scripts run by the task scheduler. Scripts can ask questions, request confirmations, and present choices to users — whether they're running via CLI or chat bot.
 
@@ -7,19 +7,19 @@ Lightweight Python SDK for adding interactive prompts to scripts run by the task
 Install as a package from the repository:
 
 ```bash
-pip install path/to/task-scheduler-sdk
+pip install path/to/interactions-sdk
 ```
 
 Or with uv:
 
 ```bash
-uv add --path path/to/task-scheduler-sdk
+uv add --path path/to/interactions-sdk
 ```
 
 ## Quick Start
 
 ```python
-from task_scheduler_sdk import confirm, ask, choose, output
+from interactions_sdk import confirm, ask, choose, output
 
 # output() works everywhere — protocol under scheduler, print() standalone
 output("Starting deployment process...")
@@ -112,22 +112,22 @@ Display text to the user. When running under the task scheduler, sends through t
 This is a **fire-and-forget** call — no response is expected. Use `output()` as a drop-in replacement for `print()` to ensure your script's display text works correctly both under the scheduler and standalone.
 
 ```python
-from task_scheduler_sdk import output
+from interactions_sdk import output
 
 output("Processing item 5 of 10...")
 output("Done!")
 ```
 
-### `is_run_by_task_scheduler() -> bool`
+### `is_interactive() -> bool`
 
-Check if the current script is running under the task-scheduler. The scheduler sets `TASK_SCHEDULER=1` in the environment of every child process it launches.
+Check if the current script is running under the task-scheduler. The scheduler sets `INTERACTIVE=1` in the environment of every child process it launches.
 
-**Returns:** `True` if the `TASK_SCHEDULER` environment variable is `"1"`, `False` otherwise.
+**Returns:** `True` if the `INTERACTIVE` environment variable is `"1"`, `False` otherwise.
 
 ```python
-from task_scheduler_sdk import is_run_by_task_scheduler
+from interactions_sdk import is_interactive
 
-if is_run_by_task_scheduler():
+if is_interactive():
     # Safe to use SDK prompts (confirm, ask, choose)
     answer = confirm("Continue?", default=True)
 else:
@@ -137,14 +137,14 @@ else:
 
 ### `ENV_MARKER`
 
-The name of the environment variable used for scheduler detection (`"TASK_SCHEDULER"`). Exposed for advanced use cases (e.g., custom detection logic).
+The name of the environment variable used for scheduler detection (`"INTERACTIVE"`). Exposed for advanced use cases (e.g., custom detection logic).
 
 ## Error Handling
 
 If a prompt times out and has no default value, an `InteractionError` is raised:
 
 ```python
-from task_scheduler_sdk import confirm, InteractionError
+from interactions_sdk import confirm, InteractionError
 
 try:
     result = confirm("Proceed?")

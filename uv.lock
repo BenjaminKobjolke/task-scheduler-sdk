@@ -64,7 +64,7 @@ wheels = [
 ]
 
 [[package]]
-name = "task-scheduler-sdk"
+name = "interactions-sdk"
 version = "0.1.0"
 source = { editable = "." }
 

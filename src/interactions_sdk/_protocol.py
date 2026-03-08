@@ -1,4 +1,4 @@
-"""Low-level JSON protocol for communicating with the task scheduler."""
+"""Low-level JSON protocol for communicating with the interactive scheduler."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for task_scheduler_sdk — confirm, ask, choose with mocked stdin/stdout."""
+"""Tests for interactions_sdk — confirm, ask, choose with mocked stdin/stdout."""
 
 import json
 import os
@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from task_scheduler_sdk import ENV_MARKER, ask, choose, confirm, is_run_by_task_scheduler, output
-from task_scheduler_sdk._protocol import InteractionError
+from interactions_sdk import ENV_MARKER, ask, choose, confirm, is_interactive, output
+from interactions_sdk._protocol import InteractionError
 
 
 class TestConfirm:
@@ -19,7 +19,7 @@ class TestConfirm:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = confirm("Deploy?")
 
@@ -34,7 +34,7 @@ class TestConfirm:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = confirm("Deploy?")
 
@@ -45,7 +45,7 @@ class TestConfirm:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = confirm("Deploy?", default=True)
 
@@ -73,7 +73,7 @@ class TestAsk:
         with (
             patch("sys.stdout", new_callable=StringIO),
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = ask("Version:")
 
@@ -84,7 +84,7 @@ class TestAsk:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = ask("Version:", default="1.0.0")
 
@@ -100,7 +100,7 @@ class TestChoose:
         with (
             patch("sys.stdout", new_callable=StringIO),
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = choose("Select env:", ["staging", "production"])
 
@@ -111,7 +111,7 @@ class TestChoose:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             choose("Select:", ["a", "b", "c"])
 
@@ -125,7 +125,7 @@ class TestChoose:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             result = choose(
                 "Pick:", ["Continue", "Retry"],
@@ -141,7 +141,7 @@ class TestChoose:
         with (
             patch("sys.stdout", new_callable=StringIO) as mock_out,
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             choose("Pick:", ["a", "b"])
 
@@ -157,31 +157,31 @@ class TestErrorHandling:
         with (
             patch("sys.stdout", new_callable=StringIO),
             patch("sys.stdin", StringIO(response + "\n")),
-            patch("task_scheduler_sdk._protocol._generate_id", return_value="test-id"),
+            patch("interactions_sdk._protocol._generate_id", return_value="test-id"),
         ):
             with pytest.raises(InteractionError, match="Timeout"):
                 confirm("Deploy?")
 
 
-class TestIsRunByTaskScheduler:
-    """Tests for is_run_by_task_scheduler()."""
+class TestIsInteractive:
+    """Tests for is_interactive()."""
 
     def test_returns_true_when_env_set(self):
-        """With TASK_SCHEDULER=1, returns True."""
+        """With INTERACTIVE=1, returns True."""
         with patch.dict(os.environ, {ENV_MARKER: "1"}):
-            assert is_run_by_task_scheduler() is True
+            assert is_interactive() is True
 
     def test_returns_false_when_missing(self):
         """Without env var, returns False."""
         env = os.environ.copy()
         env.pop(ENV_MARKER, None)
         with patch.dict(os.environ, env, clear=True):
-            assert is_run_by_task_scheduler() is False
+            assert is_interactive() is False
 
     def test_returns_false_when_wrong_value(self):
-        """With TASK_SCHEDULER=0, returns False."""
+        """With INTERACTIVE=0, returns False."""
         with patch.dict(os.environ, {ENV_MARKER: "0"}):
-            assert is_run_by_task_scheduler() is False
+            assert is_interactive() is False
 
 
 class TestOutput:

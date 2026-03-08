@@ -1,7 +1,7 @@
-"""Task Scheduler SDK — interactive prompts for scheduled scripts.
+"""Interactions SDK — interactive prompts for scheduled scripts.
 
 Usage:
-    from task_scheduler_sdk import confirm, ask, choose
+    from interactions_sdk import confirm, ask, choose
 
     if confirm("Deploy to production?", default=True):
         env = choose("Select environment:", ["staging", "production"], default=0)
@@ -22,15 +22,15 @@ __all__ = [
     "ask",
     "choose",
     "confirm",
-    "is_run_by_task_scheduler",
+    "is_interactive",
     "output",
 ]
 
-ENV_MARKER = "TASK_SCHEDULER"
+ENV_MARKER = "INTERACTIVE"
 
 
-def is_run_by_task_scheduler() -> bool:
-    """Check if this script is running under the task-scheduler."""
+def is_interactive() -> bool:
+    """Check if this script is running under the interactive scheduler."""
     return os.getenv(ENV_MARKER) == "1"
 
 
@@ -43,7 +43,7 @@ def output(text: str) -> None:
     Args:
         text: The text to display.
     """
-    if is_run_by_task_scheduler():
+    if is_interactive():
         if text:
             _send_output(text)
     else:
